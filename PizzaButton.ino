@@ -1,6 +1,27 @@
-void setup() {
-  // put your setup code here, to run once:
+#include <ESP8266WiFi.h>
+#include <WiFiClientSecure.h>
 
+const char* host = "api.dominos.is"; // Hostname for HTTP header
+const IPAddress ip(191, 235, 177, 30); // Using hostname for connection doesn't work, using ip does
+
+void setup() {
+  Serial.begin(115200);
+  Serial.println("PizzaButton");
+
+  // Connect to WiFi
+  delay(100);
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting to SSID: ");
+  Serial.println(ssid);
+  while(WiFi.status() != WL_CONNECTED)
+  {
+    Serial.print(".");
+    delay(500);
+  }
+  Serial.println();
+  Serial.println("Connected");
+  Serial.print("IP: ");
+  Serial.println(WiFi.localIP());
 }
 
 void loop() {
