@@ -1,7 +1,16 @@
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 #include <ESP8266WiFi.h>
 #include <WiFiClientSecure.h>
 
 #define BUTTON_PIN 14
+
+Adafruit_SSD1306 display = Adafruit_SSD1306();
+
+#if (SSD1306_LCDHEIGHT != 32)
+ #error("Height incorrect, please fix Adafruit_SSD1306.h!");
+#endif
+
 
 const char* host = "api.dominos.is"; // Hostname for HTTP header
 const char* url = "/api/Orders";
@@ -19,19 +28,20 @@ WiFiClientSecure conn; // Client for HTTPS connection
 void wait_until(int state)
 {
   Serial.print("Waiting for button to be ");
-  Serial.println(state ? "pressed" : "released" );
+  Serial.println(state ? "pressed" : "released");
   while(digitalRead(BUTTON_PIN) == !state)
   {
     delay(100);
   }
   Serial.print("Button ");
-  Serial.println(state ? "pressed" : "released" );
+  Serial.println(state ? "pressed" : "released");
 }
 
 void write_order()
 {
   Serial.println("Sending order");
-
+  display.println("Ordering pizza");
+  display.display();
   // Send headers
   Serial.println("Sending headers");
   conn.println(request);
@@ -43,19 +53,24 @@ void write_order()
   conn.println(order_json);
   conn.println();
   Serial.println("Payload sent");
+  display.println("Ordered");
+  display.display();
 }
 
 void read_response()
 {
+  bool reading_started = false;
   Serial.println("Reading response");
   while(conn.connected())
   {
     while(conn.available())
     {
+      reading_started = true;
       delay(2);
       Serial.write(conn.read());
     }
     delay(2);
+    if(reading_started) break;
   }
   Serial.println();
   Serial.println("Response read");
@@ -70,15 +85,21 @@ void order_pizza()
 {
   Serial.print("Connecting to: ");
   Serial.println(host);
-  
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.setTextSize(1);
+  display.println("Connecting to API");
+  display.display();
   // Connect to API
-  while(!conn.connect(ip, port))
+  if(!conn.connect(ip, port))
   {
     Serial.println("Connection failed, trying again");
-    delay(500);
+    display.println("Error, please try again");
+    return;
   }
   Serial.println("Connected");
-
+  display.println("Connected");
+  display.display();
   // Write the order to the stream
   delay(500);
   write_order();
@@ -89,6 +110,16 @@ void setup() {
   Serial.begin(115200);
   Serial.println("PizzaButton");
 
+  // initialize display and print initial message
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3C (for the 128x32)
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.setTextColor(WHITE);
+  display.setTextSize(3);
+  display.println("Dominos");
+  display.display();
+  delay(1000);
+  
   // prepare request string
   request = "POST " + String(url) + " HTTP/1.1\n"\
             "Host: " + String(host) + "\n"\
@@ -104,6 +135,14 @@ void setup() {
   WiFi.begin(ssid, password);
   Serial.print("Connecting to SSID: ");
   Serial.println(ssid);
+
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setCursor(0,0);
+  display.print("Connecting to ");
+  display.println(ssid);
+  display.display();
+  
   while(WiFi.status() != WL_CONNECTED)
   {
     Serial.print(".");
@@ -113,6 +152,8 @@ void setup() {
   Serial.println("Connected");
   Serial.print("IP: ");
   Serial.println(WiFi.localIP());
+  display.println("Connected");
+  display.display();
 
   // Don't leave setup until button is released
   wait_until(LOW);
@@ -120,6 +161,12 @@ void setup() {
 }
 
 void loop() {
+  display.clearDisplay();
+  display.setTextSize(3);
+  display.setCursor(0,0);
+  display.print("Ready!");
+  display.display();
+  
   // wait for button press
   wait_until(HIGH);
   order_pizza();
